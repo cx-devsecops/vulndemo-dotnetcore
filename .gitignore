@@ -6,7 +6,8 @@ app/.vscode/launch.json
 app/.vscode/tasks.json
 
 .vscode/*
-
+/verascan
+.idea
 # ignore things like results.json from a pipeline scan
 app/*.json  
 /publish
