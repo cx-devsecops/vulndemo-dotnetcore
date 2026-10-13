@@ -1,7 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Security.Cryptography;
-using System.Text;
+using Microsoft.AspNetCore.Identity;
 
 namespace Verademo.Models
 {
@@ -16,20 +15,41 @@ namespace Verademo.Models
         [Column("last_login")] public DateTime? LastLogin { get; set; }
         [Column("is_admin")] public bool IsAdmin { get; set; }
 
+        // Framework-provided PBKDF2 hasher with a per-user random salt (CWE-759 fix).
+        private static readonly PasswordHasher<User> _passwordHasher = new PasswordHasher<User>();
+
         public static User Create(string userName, string blabName, string realName, bool isAdmin = false)
         {
-            var password = Md5Hash(userName);
+            // Use the userName as the initial password, hashed with a random salt via PBKDF2.
+            var tempUser = new User { UserName = userName };
+            var password = _passwordHasher.HashPassword(tempUser, userName);
             var createdAt = DateTime.Now;
 
             return new User(userName, password, createdAt, null, blabName, realName, isAdmin);
         }
 
-        public User()
+        /// <summary>
+        /// Hashes a plaintext password for the given user using PBKDF2 with a random salt.
+        /// </summary>
+        public static string HashPassword(User user, string plainTextPassword)
         {
-            
+            return _passwordHasher.HashPassword(user, plainTextPassword);
         }
 
-        public User(string userName, string password, DateTime createdAt, DateTime? lastLogin, string blabName, string realName, bool isAdmin) 
+        /// <summary>
+        /// Verifies a plaintext password against the stored PBKDF2 hash.
+        /// </summary>
+        public static PasswordVerificationResult VerifyPassword(User user, string hashedPassword, string providedPassword)
+        {
+            return _passwordHasher.VerifyHashedPassword(user, hashedPassword, providedPassword);
+        }
+
+        public User()
+        {
+
+        }
+
+        public User(string userName, string password, DateTime createdAt, DateTime? lastLogin, string blabName, string realName, bool isAdmin)
         {
             UserName = userName;
             Password = password;
@@ -39,27 +59,6 @@ namespace Verademo.Models
             BlabName = blabName;
             RealName = realName;
             IsAdmin = isAdmin;
-        }
-
-        protected static string Md5Hash(string input)
-        {
-            var sb = new StringBuilder();
-            if (string.IsNullOrEmpty(input))
-            {
-                return sb.ToString();
-            }
-
-            using (MD5 md5 = MD5.Create())
-            {
-                var retVal = md5.ComputeHash(Encoding.ASCII.GetBytes(input));
-
-                foreach (var t in retVal)
-                {
-                    sb.Append(t.ToString("x2"));
-                }
-            }
-
-            return sb.ToString();
         }
     }
 }
