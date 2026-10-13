@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Net;
 using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
@@ -383,12 +384,13 @@ namespace Verademo.Controllers
                 {
                     var blab = new Blab {PostDate = blabsForMeResults.GetDateTime(3)};
 
-                    returnTemplate.Append(string.Format(template, blabsForMeResults.GetString(0), // username
-                                                        blabsForMeResults.GetString(2), // blab content
-                                                        blabsForMeResults.GetString(1), // blab name
-                                                        blab.PostDateString, // timestamp
-                                                        blabsForMeResults.GetInt32(5), // blabID
-                                                        blabsForMeResults.GetInt32(4) // comment count
+                    returnTemplate.Append(string.Format(template,
+                                                        WebUtility.HtmlEncode(blabsForMeResults.GetString(0)), // username (HTML-encoded)
+                                                        WebUtility.HtmlEncode(blabsForMeResults.GetString(2)), // blab content (HTML-encoded)
+                                                        WebUtility.HtmlEncode(blabsForMeResults.GetString(1)), // blab name (HTML-encoded)
+                                                        blab.PostDateString, // timestamp (non-user-controlled)
+                                                        blabsForMeResults.GetInt32(5), // blabID (integer, safe)
+                                                        blabsForMeResults.GetInt32(4) // comment count (integer, safe)
                     ));
                 }
             }
