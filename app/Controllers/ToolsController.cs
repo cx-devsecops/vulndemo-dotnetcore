@@ -89,12 +89,11 @@ namespace Verademo.Controllers
 
             try
             {
-                // START BAD CODE
-                var fileName = "/bin/bash";
-                var arguments = $"-c \"/bin/fortune {fortuneFile}\"";
-                // END BAD CODE
-
-                var proc = CreateStdOutProcess(fileName, arguments);
+                // Invoke /bin/fortune directly without a shell, passing fortuneFile as a
+                // discrete argument via ArgumentList. This eliminates the shell injection
+                // vector: no shell is spawned, so metacharacters in fortuneFile have no effect.
+                var startInfo = CreateFortuneProcessStartInfo(fortuneFile);
+                var proc = new Process { StartInfo = startInfo };
 
                 proc.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e) { output.Append(e.Data); };
                 proc.OutputDataReceived += delegate (object sender, DataReceivedEventArgs e) { output.Append(e.Data + "\n"); };
@@ -109,6 +108,27 @@ namespace Verademo.Controllers
                 logger.Error(ex);
             }
             return output == null ? "" : output.ToString();
+        }
+
+        /// <summary>
+        /// Creates the ProcessStartInfo for the fortune command. Protected virtual to allow
+        /// testing of argument construction without actually spawning a process.
+        /// </summary>
+        protected virtual ProcessStartInfo CreateFortuneProcessStartInfo(string fortuneFile)
+        {
+            // Directly invoke /bin/fortune — no shell (UseShellExecute=false, FileName is the
+            // binary itself). ArgumentList adds fortuneFile as a discrete OS-level argument,
+            // so shell metacharacters (;, |, &, $, etc.) in fortuneFile are never interpreted.
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "/bin/fortune",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            startInfo.ArgumentList.Add(fortuneFile);
+            return startInfo;
         }
 
         private static Process CreateStdOutProcess(string filename, string arguments)
