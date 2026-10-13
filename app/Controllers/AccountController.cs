@@ -389,9 +389,20 @@ namespace Verademo.Controllers
                 return RedirectToLogin(Request.QueryString.Value);
             }
 
-            var imagePath = Path.Combine(_environment.WebRootPath, "images", image);
+            // Resolve the allowed base directory to an absolute path
+            var imagesBaseDir = Path.GetFullPath(Path.Combine(_environment.WebRootPath, "images"));
 
-            logger.Info("Fetching profile image: " + imagePath);
+            // Resolve the requested path fully so all ".." sequences are normalised
+            var imagePath = Path.GetFullPath(Path.Combine(imagesBaseDir, image));
+
+            // Enforce that the resolved path stays within the allowed images directory
+            if (!imagePath.StartsWith(imagesBaseDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                && !imagePath.Equals(imagesBaseDir, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("Invalid image path.");
+            }
+
+            logger.Info("Fetching profile image");
 
             return PhysicalFile(imagePath, System.Net.Mime.MediaTypeNames.Application.Octet);
         }
