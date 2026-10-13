@@ -226,6 +226,18 @@ namespace Verademo.Controllers
             return View(blabViewModel);
         }
 
+        // Allowlist of valid ORDER BY expressions for the Blabbers query.
+        // SQL parameters cannot be used for column names/sort direction, so an
+        // explicit allowlist is the SAST-recognized safe approach here.
+        private static readonly IReadOnlyDictionary<string, string> AllowedSortOrders =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "blab_name ASC",        "users.blab_name ASC"    },
+                { "created_at DESC",      "users.created_at DESC"  },
+                { "totallisteners DESC",  "totallisteners DESC"    },
+                { "totallistening DESC",  "totallistening DESC"    }
+            };
+
         [HttpGet, ActionName("Blabbers")]
         public ActionResult GetBlabbers(string sort)
         {
@@ -234,12 +246,13 @@ namespace Verademo.Controllers
                 return RedirectToLogin(Request.QueryString.Value);
             }
 
-            if (string.IsNullOrWhiteSpace(sort)) 
+            // Validate sort against the allowlist; reject unknown values.
+            if (string.IsNullOrWhiteSpace(sort) || !AllowedSortOrders.ContainsKey(sort))
             {
                 sort = "blab_name ASC";
             }
             var username = GetLoggedInUsername();
-            var viewModel = PopulateBlabbersViewModel(sort, username);
+            var viewModel = PopulateBlabbersViewModel(AllowedSortOrders[sort], username);
 
             return View(viewModel);
         }
@@ -248,6 +261,14 @@ namespace Verademo.Controllers
         {
             var viewModel = new BlabbersViewModel();
             var blabbersList = new List<Blabber>();
+
+            // Defense-in-depth: verify the caller supplied a value from the allowlist before
+            // formatting it into the ORDER BY clause — the method should never be called with
+            // an arbitrary user-supplied string.
+            if (!AllowedSortOrders.ContainsValue(sort))
+            {
+                sort = AllowedSortOrders["blab_name ASC"];
+            }
 
             try
             {
