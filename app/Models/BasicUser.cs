@@ -6,6 +6,9 @@ namespace Verademo.Models
         public string BlabName { get; set; }
         public string RealName { get; set; }
         public bool IsAdmin { get; set; }
+        // Used internally during authentication to hold the stored PBKDF2 hash;
+        // never exposed to views or serialized.
+        public string Password { get; set; }
 
         public BasicUser()
         {
