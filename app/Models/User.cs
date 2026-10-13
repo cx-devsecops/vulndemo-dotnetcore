@@ -29,11 +29,13 @@ namespace Verademo.Models
             
         }
 
-        public User(string userName, string password, DateTime createdAt, DateTime? lastLogin, string blabName, string realName, bool isAdmin) 
+        public User(string userName, string password, DateTime createdAt, DateTime? lastLogin, string blabName, string realName, bool isAdmin)
         {
             UserName = userName;
             Password = password;
-            PasswordHint = password;
+            // PasswordHint must NOT be set to the password value (CWE-522).
+            // Leave it null; it will be populated only when a user explicitly sets a hint.
+            PasswordHint = null;
             CreatedAt = createdAt;
             LastLogin = lastLogin;
             BlabName = blabName;
