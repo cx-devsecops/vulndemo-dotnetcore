@@ -410,7 +410,10 @@ namespace Verademo.Controllers
             logger.Info("PostRegister processRegister");
             var registerViewModel = new RegisterViewModel();
 
-            HttpContext.Session.SetString("username", username);
+            // Do NOT set the session here — the user has not been authenticated yet.
+            // Session is only established after successful login (LoginUser) or after
+            // PostRegisterFinish completes and the user logs in. Setting the session
+            // from an unverified username parameter allows session hijacking (CWE-287).
 
             var sql = "SELECT count(*) FROM users WHERE username = @username";
             using (var dbContext = new ApplicationDbContext())
