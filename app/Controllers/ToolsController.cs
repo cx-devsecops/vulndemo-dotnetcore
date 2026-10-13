@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Verademo.Models;
 
@@ -10,6 +11,12 @@ namespace Verademo.Controllers
     public class ToolsController : AuthControllerBase
     {
         protected readonly log4net.ILog logger;
+
+        // Allowlist pattern for valid hostname/IP characters only.
+        // Accepts: letters, digits, hyphens, dots, colons (for IPv6), square brackets (for [::1]).
+        // Explicitly rejects shell metacharacters (;, |, &, $, `, (, ), <, >, !, \, /, space, etc.).
+        internal static readonly Regex ValidHostPattern =
+            new Regex(@"^[a-zA-Z0-9\.\-\[\]:]{1,253}$", RegexOptions.Compiled);
 
         public ToolsController()
         {
@@ -50,17 +57,24 @@ namespace Verademo.Controllers
                 return "";
             }
 
-            logger.Info("Pinging: " + host);
+            // Validate host using an allowlist before passing as a discrete argument.
+            // This prevents shell metacharacters from reaching the process invocation.
+            if (!ValidHostPattern.IsMatch(host))
+            {
+                logger.Warn("Ping rejected invalid host input");
+                return "Invalid host";
+            }
+
+            logger.Info("Pinging host");
 
             var output = new StringBuilder();
             try
             {
-                // START BAD CODE
-                var fileName = "bash";
-                var arguments = "-c \"ping -c1 " + host + "\"";
-                // END BAD CODE
-
-                var proc = CreateStdOutProcess(fileName, arguments);
+                // FIXED: invoke ping directly (no shell) passing host as a separate element
+                // in the ArgumentList collection. With UseShellExecute=false and ArgumentList,
+                // the OS passes each element as a discrete argv entry — no shell interpretation
+                // occurs, so no shell metacharacter injection is possible.
+                var proc = CreateArgListProcess("ping", new[] { "-c", "1", host });
 
                 proc.ErrorDataReceived += delegate (object sender, DataReceivedEventArgs e) { output.AppendLine(e.Data); };
                 proc.OutputDataReceived += delegate (object sender, DataReceivedEventArgs e) { output.AppendLine(e.Data); };
@@ -109,6 +123,31 @@ namespace Verademo.Controllers
                 logger.Error(ex);
             }
             return output == null ? "" : output.ToString();
+        }
+
+        /// <summary>
+        /// Creates a Process that invokes the given filename with each element of
+        /// <paramref name="args"/> passed as a discrete argument (argv entry), bypassing
+        /// shell interpretation entirely. UseShellExecute is false.
+        /// </summary>
+        private static Process CreateArgListProcess(string filename, string[] args)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = filename,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            // ArgumentList passes each string as a separate argv element without shell expansion.
+            foreach (var arg in args)
+            {
+                startInfo.ArgumentList.Add(arg);
+            }
+
+            return new Process { StartInfo = startInfo };
         }
 
         private static Process CreateStdOutProcess(string filename, string arguments)
