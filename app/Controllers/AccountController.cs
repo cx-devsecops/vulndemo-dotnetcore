@@ -169,6 +169,7 @@ namespace Verademo.Controllers
         }
 
         [HttpPost, ActionName("Profile")]
+        [ValidateAntiForgeryToken]
         public ActionResult PostProfile(string realName, string blabName, string userName, IFormFile file)
         {
             logger.Info("Entering PostProfile");
