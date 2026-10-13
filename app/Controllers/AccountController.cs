@@ -524,8 +524,8 @@ namespace Verademo.Controllers
                 });
             }
 
-            // Use the user class to get the hashed password.
-            user.Password = Md5Hash(user.Password);
+            // Use the user class to get the password hashed with PBKDF2 + random salt.
+            user.Password = Verademo.Models.User.HashPassword(user, user.Password);
             user.CreatedAt = DateTime.Now;
             
             using (var dbContext = new ApplicationDbContext())

@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -21,23 +20,38 @@ namespace Verademo.Controllers
 
             using (var dbContext = new ApplicationDbContext())
             {
-                var found = dbContext.Database.SqlQuery<BasicUser>(
-                    "select username, real_name as realname, blab_name as blabname, is_admin as isadmin from users where username ='"
-                    + userName + "' and password='" + Md5Hash(passWord) + "';").ToList();
+                // Fetch the user record first, then verify the password using PBKDF2
+                // via PasswordHasher — avoids embedding password material in SQL and
+                // eliminates the unsalted MD5 comparison (CWE-759 fix).
+                var userRecord = dbContext.Users
+                    .FirstOrDefault(u => u.UserName == userName);
 
-                if (found.Count != 0)
+                if (userRecord == null)
                 {
-                    // Update last login timestamp
-                    string userNameFromDB = found[0].UserName;
-                    dbContext.Users.Where(u => u.UserName == userNameFromDB).First().LastLogin = DateTime.Now;
-                    dbContext.SaveChanges();
-
-                    HttpContext.Session.SetString("username", userName);
-                    return found[0];
+                    return null;
                 }
-            }
 
-            return null;
+                var result = Verademo.Models.User.VerifyPassword(userRecord, userRecord.Password, passWord);
+
+                if (result == PasswordVerificationResult.Failed)
+                {
+                    return null;
+                }
+
+                // Update last login timestamp
+                userRecord.LastLogin = DateTime.Now;
+                dbContext.SaveChanges();
+
+                HttpContext.Session.SetString("username", userName);
+
+                return new BasicUser
+                {
+                    UserName = userRecord.UserName,
+                    RealName = userRecord.RealName,
+                    BlabName = userRecord.BlabName,
+                    IsAdmin = userRecord.IsAdmin
+                };
+            }
         }
 
         protected string GetLoggedInUsername()
@@ -67,25 +81,5 @@ namespace Verademo.Controllers
                 }));
         }
 
-        protected static string Md5Hash(string input)
-        {
-            var sb = new StringBuilder();
-            if (string.IsNullOrEmpty(input))
-            {
-                return sb.ToString();
-            }
-
-            using (MD5 md5 = MD5.Create())
-            {
-                var retVal = md5.ComputeHash(Encoding.ASCII.GetBytes(input));
-
-                foreach (var t in retVal)
-                {
-                    sb.Append(t.ToString("x2"));
-                }
-            }
-
-            return sb.ToString();
-        }
     }
 }
