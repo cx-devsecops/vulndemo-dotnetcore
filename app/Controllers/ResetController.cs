@@ -60,6 +60,16 @@ namespace Verademo.Controllers
         {
             logger.Info("Entering showReset");
 
+            if (!IsUserLoggedIn())
+            {
+                return RedirectToLogin(Request.QueryString.Value);
+            }
+
+            if (!IsUserAdmin())
+            {
+                return new ForbidResult();
+            }
+
             return View(new ResetViewModel());
         }
 
@@ -68,6 +78,16 @@ namespace Verademo.Controllers
         public ActionResult PostReset(string confirm, string primary)
         {
             logger.Info("Entering processReset");
+
+            if (!IsUserLoggedIn())
+            {
+                return RedirectToLogin(Request.QueryString.Value);
+            }
+
+            if (!IsUserAdmin())
+            {
+                return new ForbidResult();
+            }
 
             var viewModel = new ResetViewModel();
 
