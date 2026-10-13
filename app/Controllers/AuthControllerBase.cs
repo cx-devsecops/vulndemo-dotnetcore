@@ -55,6 +55,21 @@ namespace Verademo.Controllers
             return string.IsNullOrEmpty(HttpContext.Session.GetString("username")) == false;
         }
 
+        protected bool IsUserAdmin()
+        {
+            var username = GetLoggedInUsername();
+            if (string.IsNullOrEmpty(username))
+            {
+                return false;
+            }
+
+            using (var dbContext = new ApplicationDbContext())
+            {
+                var user = dbContext.Users.FirstOrDefault(u => u.UserName == username);
+                return user != null && user.IsAdmin;
+            }
+        }
+
         protected RedirectToRouteResult RedirectToLogin(string targetUrl)
         {
             return new RedirectToRouteResult(
