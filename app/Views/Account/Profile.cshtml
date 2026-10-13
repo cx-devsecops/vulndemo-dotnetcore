@@ -29,6 +29,7 @@
             
             <div class="actionBox">
                 <form method="post" action="@Url.Action("Profile", "Account") " id="updateprofile" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
                     <input type="hidden" name="returnPath" value="">
                     <table class="table table-condensed">
                         <tbody>
