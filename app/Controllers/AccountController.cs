@@ -282,8 +282,11 @@ namespace Verademo.Controllers
                         return Content("Username '" + userName + "' has no password hint!");
                     }
 
-                    var formatString = "Username '" + userName + "' has password: {0}";
-                    return Content(string.Format(formatString, match.PasswordHint.Substring(0, 2) + new string('*', match.PasswordHint.Length - 2)));
+                    // HTML-encode the stored hint (data-store value) and the username before embedding in the response
+                    var maskedHint = match.PasswordHint.Substring(0, 2) + new string('*', match.PasswordHint.Length - 2);
+                    var encodedHint = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(maskedHint);
+                    var encodedUserName = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(userName);
+                    return Content("Username '" + encodedUserName + "' has password: " + encodedHint);
                 }
             }
             catch (Exception)
