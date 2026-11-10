@@ -43,18 +43,17 @@ namespace Verademo.Commands
                 }
             }
 
-            /* START BAD CODE */
             var listeningEvent = username + " started listening to " + blabberUsername + "(" + blabberName + ")";
-            var eventQuery = "INSERT INTO users_history (blabber, event) VALUES ('" + username + "', '" + listeningEvent + "')";
+            var eventQuery = "INSERT INTO users_history (blabber, event) VALUES (@blabber, @event)";
 
             using (var sqlStatement = connect.CreateCommand())
             {
                 logger.Info(eventQuery);
                 sqlStatement.CommandText = eventQuery;
+                sqlStatement.Parameters.Add(new SqlParameter { ParameterName = "@blabber", Value = username });
+                sqlStatement.Parameters.Add(new SqlParameter { ParameterName = "@event", Value = listeningEvent });
                 sqlStatement.ExecuteNonQuery();
             }
-
-            /* END BAD CODE */
         }
     }
 }
